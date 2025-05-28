@@ -32,6 +32,9 @@ contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
 
     // === GLOBAL STATE VARIABLE ===
 
+    uint88 public constant MINIMUM_BET = 0.01 ether;
+    uint88 public constant MAXIMUM_BET = 10 ether;
+
     // address public vrfCoordinator;
     // bytes32 public keyHash;
     // uint64 public subscriptionId;
@@ -39,12 +42,17 @@ contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
     // === EXTERNAL FUNCTIONS ===
 
     function startGame() external payable  returns(uint8) {
+        
+        require(msg.value >= MINIMUM_BET, "Bet is below the minimum");
+        require(msg.value <= MAXIMUM_BET, "Bet is above the maximum");
 
         Game storage game = games[msg.sender];
+
         require(
             !isFlagSet(game.statusFlags, FLAG_ACTIVE),
             "Player is already in an active game"
         );
+
 
     }
 
