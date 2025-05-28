@@ -20,15 +20,16 @@ contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
 
         uint8[] playerCards;    // Encoded player cards [0–51]
         uint8[] dealerCards;    // Encoded dealer cards [0–51]
-        uint8[] AvailableCards; // Encoded available deck cards [0–51]
+        mapping(uint8 => uint8) cardMap; // Sparse mapping to simulate the shuffled deck
+        uint8 remainingCards;            // Decremented with each card draw
 
         uint256 requestId;      // VRF Chainlink  ID for random card picking
     }
 
     // === MAPPINGS ===
 
-    mapping(address => Game) public games;               // Partie active par joueur
-    mapping(uint256 => address) public requestIdToPlayer; // Lien entre VRF et joueur
+    mapping(address => Game) public games;               // Active player game
+    mapping(uint256 => address) public requestIdToPlayer; // Player to VRF request
 
     // === GLOBAL STATE VARIABLE ===
 
@@ -44,20 +45,59 @@ contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
     function startGame() external payable  returns(uint8) {
         
         require(msg.value >= MINIMUM_BET, "Bet is below the minimum");
-        require(msg.value <= MAXIMUM_BET, "Bet is above the maximum");
+        require(msg.value <= MAXIMUM_BET, "Bet is above the maximum");  
 
-        Game storage game = games[msg.sender];
+        Game storage game = games[msg.sender]; 
 
         require(
             !isFlagSet(game.statusFlags, FLAG_ACTIVE),
             "Player is already in an active game"
         );
 
+        game.player = msg.sender;
+        setFlag(game.statusFlags, FLAG_ACTIVE);
+        game.bet = uint88(msg.value);
+        game.statusFlags = 0;
+        game.remainingCards = 52;
+
+        requestId = s_vrfCoordinator.requestRandomWords(
+        VRFV2PlusClient.RandomWordsRequest({
+            keyHash: KEY_HASH,
+            subId: s_subscriptionId,
+            requestConfirmations: requestConfirmations,
+            callbackGasLimit: callbackGasLimit,
+            numWords: numWords,
+            extraArgs: VRFV2PlusClient._argsToBytes(
+                VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
+            )
+        })
+
+    );
 
     }
 
-    // === HELPER FUNCTIONS ===
+    function drawCard(Game storage game, uint256 randomWord) internal returns (uint8) {
+        require(game.remainingCards > 0, "Deck is empty");
 
+        uint8 index = uint8(randomWord % game.remainingCards);
+
+        uint8 card = game.cardMap[index];
+        if (card == 0 && index != 0) {
+            card = index;
+        }
+
+        uint8 lastCard = game.cardMap[game.remainingCards - 1];
+        if (lastCard == 0 && game.remainingCards - 1 != 0) {
+            lastCard = game.remainingCards - 1;
+        }
+
+        game.cardMap[index] = lastCard;
+        game.remainingCards--;
+
+        return card;
+    }
+
+    // === HELPER FUNCTIONS ===
     /*
         Game status is tracked using a single uint8 `statusFlags` variable,
         where each bit represents a boolean flag. This allows for efficient
@@ -72,9 +112,38 @@ contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
         are used to read or update individual bits safely and consistently.
     */
 
+    /*
+     * @dev Checks whether a specific status flag is set in the provided bitfield.
+     * @param flags The current uint8 flag field representing game status.
+     * @param bit The index (0-based) of the bit to check.
+     * @return True if the specified bit is set, false otherwise.
+    */
+
     function isFlagSet(uint8 flags, uint8 bit) internal pure returns (bool) {
         return (flags & (1 << bit)) != 0;
     }
+
+    /*
+     * @dev Sets a specific status flag in the provided bitfield.
+     * @param flags The current uint8 flag field representing game status.
+     * @param bit The index (0-based) of the bit to set.
+     * @return The updated flag field with the specified bit set.
+    */
+    function setFlag(uint8 flags, uint8 bit) internal pure returns (uint8) {
+        return flags | (1 << bit);
+    }
+
+    /*
+     * @dev Clears (unsets) a specific status flag in the provided bitfield.
+     * @param flags The current uint8 flag field representing game status.
+     * @param bit The index (0-based) of the bit to clear.
+     * @return The updated flag field with the specified bit cleared.
+    */
+
+    function clearFlag(uint8 flags, uint8 bit) internal pure returns (uint8) {
+        return flags & ~(1 << bit);
+    }
+
 
 
 }   
