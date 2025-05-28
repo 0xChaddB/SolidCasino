@@ -107,7 +107,7 @@ contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
         requestIdToPlayer[requestId] = msg.sender;
         game.requestId = requestId;
         
-
+        //test
     }
 
     // === VRF FUNCTIONS ===
