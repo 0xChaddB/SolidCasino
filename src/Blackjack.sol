@@ -4,6 +4,7 @@ pragma solidity ^0.8.26;
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
 
@@ -42,7 +43,7 @@ contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
 
     // === EXTERNAL FUNCTIONS ===
 
-    function startGame() external payable  returns(uint8) {
+    function startGame() external payable  nonReentrant   returns(uint8){
         
         require(msg.value >= MINIMUM_BET, "Bet is below the minimum");
         require(msg.value <= MAXIMUM_BET, "Bet is above the maximum");  
@@ -60,7 +61,7 @@ contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
         game.remainingCards = 52;
 
         // VRF call to get the 2 player cards and the 1 shown dealer card
-        requestId = s_vrfCoordinator.requestRandomWords(
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: KEY_HASH,
                 subId: s_subscriptionId,
@@ -78,22 +79,56 @@ contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
 
     } 
 
+
+    function hit() external view  nonReentrant returns(uint8){
+        Game storage game = games[msg.sender]; 
+
+        require(
+            isFlagSet(game.statusFlags, FLAG_ACTIVE),
+            "Player is not in a game"
+        );
+        require(
+            !isFlagSet(game.statusFlags, FLAG_PLAYER_STOOD), 
+            "You already stood"
+        );
+
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: KEY_HASH,
+                subId: s_subscriptionId,
+                requestConfirmations: requestConfirmations,
+                callbackGasLimit: callbackGasLimit,
+                numWords: 1, // Player draw one card
+                extraArgs: VRFV2PlusClient._argsToBytes(
+                    VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
+                )
+            })
+        );
+        requestIdToPlayer[requestId] = msg.sender;
+        game.requestId = requestId;
+        
+
+    }
+
     // === VRF FUNCTIONS ===
 
     function fulfillRandomWords(
         uint256 requestId,
         uint256[] calldata randomWords
     ) internal override {
-        Game storage game = games[requestIdToPlayer[requestId]];
+        address player = requestIdToPlayer[requestId];
+        Game storage game = games[player];
 
-        game.playerCards.push(drawCard(game, randomWords[0]));
-        game.playerCards.push(drawCard(game, randomWords[1]));
-        game.dealerCards.push(drawCard(game, randomWords[2]));
+        if (randomWords.length == 1) {
+            game.playerCards.push(drawCard(game, randomWords[0]));
+        } else {
+            game.playerCards.push(drawCard(game, randomWords[0]));
+            game.playerCards.push(drawCard(game, randomWords[1]));
+            game.dealerCards.push(drawCard(game, randomWords[2]));
+        }
 
         delete requestIdToPlayer[requestId];
     }
-
-
 
     // === HELPER FUNCTIONS ===
 
