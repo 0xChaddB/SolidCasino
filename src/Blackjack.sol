@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {VRFConsumerBaseV2Plus} from "@chainlink/contracts@1.3.0/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
-import {VRFV2PlusClient} from "@chainlink/contracts@1.3.0/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
+import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
@@ -55,49 +55,48 @@ contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
         );
 
         game.player = msg.sender;
-        setFlag(game.statusFlags, FLAG_ACTIVE);
+        game.statusFlags = setFlag(game.statusFlags, FLAG_ACTIVE); // game is now active
         game.bet = uint88(msg.value);
-        game.statusFlags = 0;
         game.remainingCards = 52;
 
+        // VRF call to get the 2 player cards and the 1 shown dealer card
         requestId = s_vrfCoordinator.requestRandomWords(
-        VRFV2PlusClient.RandomWordsRequest({
-            keyHash: KEY_HASH,
-            subId: s_subscriptionId,
-            requestConfirmations: requestConfirmations,
-            callbackGasLimit: callbackGasLimit,
-            numWords: numWords,
-            extraArgs: VRFV2PlusClient._argsToBytes(
-                VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
-            )
-        })
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: KEY_HASH,
+                subId: s_subscriptionId,
+                requestConfirmations: requestConfirmations,
+                callbackGasLimit: callbackGasLimit,
+                numWords: 3, // The 3 cards asked when game starts
+                extraArgs: VRFV2PlusClient._argsToBytes(
+                    VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
+                )
+            })
+        );
 
-    );
+        requestIdToPlayer[requestId] = msg.sender;
+        game.requestId = requestId;
 
+    } 
+
+    // === VRF FUNCTIONS ===
+
+    function fulfillRandomWords(
+        uint256 requestId,
+        uint256[] calldata randomWords
+    ) internal override {
+        Game storage game = games[requestIdToPlayer[requestId]];
+
+        game.playerCards.push(drawCard(game, randomWords[0]));
+        game.playerCards.push(drawCard(game, randomWords[1]));
+        game.dealerCards.push(drawCard(game, randomWords[2]));
+
+        delete requestIdToPlayer[requestId];
     }
 
-    function drawCard(Game storage game, uint256 randomWord) internal returns (uint8) {
-        require(game.remainingCards > 0, "Deck is empty");
 
-        uint8 index = uint8(randomWord % game.remainingCards);
-
-        uint8 card = game.cardMap[index];
-        if (card == 0 && index != 0) {
-            card = index;
-        }
-
-        uint8 lastCard = game.cardMap[game.remainingCards - 1];
-        if (lastCard == 0 && game.remainingCards - 1 != 0) {
-            lastCard = game.remainingCards - 1;
-        }
-
-        game.cardMap[index] = lastCard;
-        game.remainingCards--;
-
-        return card;
-    }
 
     // === HELPER FUNCTIONS ===
+
     /*
         Game status is tracked using a single uint8 `statusFlags` variable,
         where each bit represents a boolean flag. This allows for efficient
@@ -120,7 +119,9 @@ contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
     */
 
     function isFlagSet(uint8 flags, uint8 bit) internal pure returns (bool) {
-        return (flags & (1 << bit)) != 0;
+        unchecked {
+            return (flags & (1 << bit)) != 0;
+        }
     }
 
     /*
@@ -130,7 +131,9 @@ contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
      * @return The updated flag field with the specified bit set.
     */
     function setFlag(uint8 flags, uint8 bit) internal pure returns (uint8) {
-        return flags | (1 << bit);
+        unchecked {
+            return flags | (1 << bit);
+        }
     }
 
     /*
@@ -141,7 +144,9 @@ contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
     */
 
     function clearFlag(uint8 flags, uint8 bit) internal pure returns (uint8) {
-        return flags & ~(1 << bit);
+        unchecked {
+            return flags | (1 << bit);
+        }
     }
 
 
