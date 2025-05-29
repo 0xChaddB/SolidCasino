@@ -6,7 +6,7 @@ import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/V
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
+contract Blackjack is VRFConsumerBaseV2Plus, Ownable, ReentrancyGuard {
 
     // === BINARY FLAGS CONSTANTS ===
     uint8 constant FLAG_ACTIVE        = 0; // Game active
@@ -43,7 +43,7 @@ contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
 
     // === EXTERNAL FUNCTIONS ===
 
-    function startGame() external payable  nonReentrant   returns(uint8){
+    function startGame() external payable  nonReentrant returns(uint8){
         
         require(msg.value >= MINIMUM_BET, "Bet is below the minimum");
         require(msg.value <= MAXIMUM_BET, "Bet is above the maximum");  
@@ -107,7 +107,41 @@ contract Blackjack is VRFConsumerBaseV2Plus, Ownable {
         requestIdToPlayer[requestId] = msg.sender;
         game.requestId = requestId;
         
-        //test
+    }
+
+    function stand() external view returns(uint8){
+        Game storage game = games[msg.sender]; 
+
+        require(
+            isFlagSet(game.statusFlags, FLAG_ACTIVE),
+            "Player is not in a game"
+        );
+        require(
+            !isFlagSet(game.statusFlags, FLAG_PLAYER_STOOD), 
+            "You already stood"
+        );
+
+        // Change game status, this will indicate that the user cannot call Hit() again, and that the dealer must draw cards
+        game.statusFlags = setFlag(game.statusFlags, FLAG_PLAYER_STOOD);
+
+        while (getHandValue(game.dealerCards) < 17) {
+            // Requête VRF ou tirer localement si aléa déjà dispo
+
+            uint256 requestId = s_vrfCoordinator.requestRandomWords(
+                VRFV2PlusClient.RandomWordsRequest({
+                    keyHash: KEY_HASH,
+                    subId: s_subscriptionId,
+                    requestConfirmations: requestConfirmations,
+                    callbackGasLimit: callbackGasLimit,
+                    numWords: 1, // Player draw one card
+                    extraArgs: VRFV2PlusClient._argsToBytes(
+                        VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
+                    )
+                })
+            );  
+        }
+        
+
     }
 
     // === VRF FUNCTIONS ===
