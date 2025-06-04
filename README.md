@@ -1,66 +1,27 @@
-## Foundry
+# 🃏 Onchain Casino (Portfolio Project)
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+This is a modular and upgradeable on-chain casino built to showcase advanced Solidity architecture, including:
 
-Foundry consists of:
+- 🧠 **Account Abstraction (ERC-4337)** for seamless UX (users play without signing every transaction)
+- 🛠️ **Upgradeable contracts** via Proxy pattern for future extensibility
+- 🎲 **Chainlink VRF** for provably fair randomness
+- 🎮 Multiple games: starting with **Blackjack**, more to come (Roulette, Slots, sports bets...)
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+## 🔧 Architecture Overview
 
-## Documentation
+- `CasinoVault`: accepts user deposits and mints `CasinoToken`
+- `CasinoToken`: ERC-20 token used inside the casino for gameplay
+- `Relayer`: backend component that submits user actions to the blockchain via Account Abstraction
+- `SmartWallets`: created for users via AA, allowing the casino to act on their behalf 
+- `Game contracts`: isolated logic per game (e.g. Blackjack, Slots), fully verifiable on-chain
+- `Chainlink VRF`: integrated for randomness in games (card draws, spins, etc.)
 
-https://book.getfoundry.sh/
+## 💡 Tech Stack
 
-## Usage
+- Solidity + Foundry
+- ERC-4337 (AA)
+- OpenZeppelin Upgradeable Contracts
+- Chainlink VRF (Testnet)
+---
 
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+This is not a real-money gambling product. This project is for educational and portfolio purposes only.
