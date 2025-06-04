@@ -3,6 +3,8 @@ pragma solidity ^0.8.26;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {CasinoChip} from "./CasinoChip.sol";
+import {MockDAI} from "./MockDAI.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 // NOTE
 /// If this contract accept multiple tokens, i need a way to convert tokens value to chip token 
@@ -81,5 +83,25 @@ contract CasinoBank {
         return true;
     }
     
+    function addTokensToWhitelist(address token) external onlyOwner {
+        require(whitelistedTokens[token] == false, "Token already whitelisted");
+        require(token != address(0), "No Address(0)");
+        whitelistedTokens[token] = true;
+        allTokens.push(token);
+    }
+
+    function removeTokensToWhitelist(address token) external onlyOwner {
+        require(whitelistedTokens[token] == true, "Token not whitelisted");
+        require(token != address(0), "No Address(0)");
+        whitelistedTokens[token] = false;
+        // Remove from array using swap-and-pop
+        uint256 len = allTokens.length;
+        for (uint256 i = 0; i < len; i++) {
+            if (allTokens[i] == token) {
+                allTokens[i] = allTokens[len - 1];
+                allTokens.pop();
+            }
+        }
+    }
 
 }
