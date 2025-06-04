@@ -13,6 +13,7 @@ contract CasinoBank {
     //////////////////////////
 
     event CasinoBank__Deposit(address indexed from, address indexed token, uint256 indexed amount);
+    event CasinoBank__Withdrawal(address indexed to, address indexed token, uint256 indexed amount);
 
     // user => token => balance
     mapping(address => mapping(address => uint256)) public userBalances;
@@ -29,7 +30,7 @@ contract CasinoBank {
     }
 
     // I may need to check the depositor address.... someone maybe could inflate their balance 
-    function depositTokens(uint256 amount, address token) external payable returns (bool) {
+    function deposit(uint256 amount, address token) external payable returns (bool) {
         if (token == address(0)) {
             // ETH deposit
             require(msg.value > 0, "No ETH sent");
@@ -51,4 +52,29 @@ contract CasinoBank {
         }
     }
 
+    function cashout(address token, uint256 amount) external returns (bool) {
+        require(amount > 0, "Invalid amount");
+        require(userBalances[msg.sender][token] >= amount, "Insufficient balance");
+
+        // Update internal balance
+        userBalances[msg.sender][token] -= amount;
+
+        // Burn CasinoChip tokens (1:1 with value)
+        casinoChip.burn(msg.sender, amount);
+
+        if (token == address(0)) {
+            // ETH
+            (bool sent, ) = msg.sender.call{value: amount}("");
+            require(sent, "ETH transfer failed");
+        } else {
+            // ERC-20
+            bool success = ERC20(token).transfer(msg.sender, amount);
+            require(success, "ERC20 transfer failed");
+        }
+
+        emit CasinoBank__Withdrawal(msg.sender, token, amount);
+        return true;
+    }
+    
+    
 }
