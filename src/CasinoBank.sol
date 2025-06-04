@@ -4,6 +4,11 @@ pragma solidity ^0.8.26;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {CasinoChip} from "./CasinoChip.sol";
 
+// NOTE
+/// If this contract accept multiple tokens, i need a way to convert tokens value to chip token 
+// if a user deposit 1 eth, worth 2k$, and he gets 2000 chip, a user depositing 1 DAI, should get 1 chip
+// So, does my chip is worth is always set to 1$, or i use price feeds to convert the value of the tokens deposited ? 
+
 contract CasinoBank {
 
     CasinoChip public immutable casinoChip;
@@ -76,5 +81,5 @@ contract CasinoBank {
         return true;
     }
     
-    
+
 }
