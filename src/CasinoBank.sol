@@ -9,11 +9,35 @@ contract CasinoBank {
 
     CasinoChip public immutable casinoChip;
 
+    // user => token => balance
+    mapping(address => mapping(address => uint256)) public userBalances;
+    
+    mapping(address => bool) public whitelistedTokens;
+    address[] public allTokens;
+
     constructor(address _chip) {
         casinoChip = CasinoChip(_chip);
     }
 
+    // I may need to check the depositor address....
+    function depositTokens(uint256 amount, address token) external payable returns (bool) {
+        if (token == address(0)) {
+            // ETH deposit
+            require(msg.value > 0, "No ETH sent");
+            require(amount == msg.value, "Amount mismatch");
+            userBalances[msg.sender][address(0)] += msg.value;
+            return true;
+        } else {
+            // ERC20 deposit
+            require(msg.value == 0, "Don't send ETH with token");
+            require(whitelistedTokens[token], "Token not whitelisted");
+            require(amount > 0, "Invalid amount");
 
-
+            bool success = ERC20(token).transferFrom(msg.sender, address(this), amount);
+            require(success, "Transfer failed");
+            userBalances[msg.sender][token] += amount;
+            return success;
+        }
+    }
 
 }
