@@ -35,6 +35,7 @@ contract CasinoBank {
             require(msg.value > 0, "No ETH sent");
             require(amount == msg.value, "Amount mismatch");
             userBalances[msg.sender][address(0)] += msg.value;
+            casinoChip.mint(msg.sender, amount);
             return true; // event instead of return ? 
         } else {
             // ERC20 deposit
@@ -45,6 +46,7 @@ contract CasinoBank {
             bool success = ERC20(token).transferFrom(msg.sender, address(this), amount);
             require(success, "Transfer failed");
             userBalances[msg.sender][token] += amount;
+            casinoChip.mint(msg.sender, amount);
             return true; // event instead of return ? 
         }
     }
