@@ -9,7 +9,7 @@ This is a modular and upgradeable on-chain casino built to showcase advanced Sol
 
 ## 🔧 Architecture Overview
 
-- `CasinoVault`: accepts user deposits and mints `CasinoToken`
+- `CasinoBank`: accepts user deposits and mints `CasinoToken`
 - `CasinoToken`: ERC-20 token used inside the casino for gameplay
 - `Relayer`: backend component that submits user actions to the blockchain via Account Abstraction
 - `SmartWallets`: created for users via AA, allowing the casino to act on their behalf 
