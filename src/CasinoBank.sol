@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {CasinoChip} from "./CasinoChip.sol";
-import {MockDAI} from "./MockDAI.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 // NOTE
@@ -11,7 +10,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 // if a user deposit 1 eth, worth 2k$, and he gets 2000 chip, a user depositing 1 DAI, should get 1 chip
 // So, does my chip is worth is always set to 1$, or i use price feeds to convert the value of the tokens deposited ? 
 
-contract CasinoBank {
+contract CasinoBank is Ownable {
 
     CasinoChip public immutable casinoChip;
 
@@ -32,7 +31,7 @@ contract CasinoBank {
     //      CONSTRUCTOR     //
     //////////////////////////
 
-    constructor(address _chip) {
+    constructor(address _chip) Ownable(msg.sender) {
         casinoChip = CasinoChip(_chip);
     }
 
