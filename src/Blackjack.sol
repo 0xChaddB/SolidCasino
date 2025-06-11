@@ -50,6 +50,10 @@ contract Blackjack is VRFConsumerBaseV2Plus, ReentrancyGuard {
         Game storage game = games[msg.sender]; 
         require(!isFlagSet(game.statusFlags, FLAG_ACTIVE), "Already in game");
 
+        // Transfer Chip form player to this contract 
+        bool success = chip.transferFrom(msg.sender, address(this), betAmount);
+        require(success, "Token transfer failed");
+
         game.player = msg.sender;
         game.bet = uint88(msg.value);
         game.statusFlags = setFlag(game.statusFlags, FLAG_ACTIVE);
