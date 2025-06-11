@@ -32,15 +32,16 @@ contract Blackjack is VRFConsumerBaseV2Plus, ReentrancyGuard {
 
     address public immutable vrfCoordinator;
     bytes32 public immutable KEY_HASH; // Replace with actual keyhash
-    uint64 public constant SUBSCRIPTION_ID = 1;
+    uint256 public immutable SUBSCRIPTION_ID;
     uint16 public constant REQUEST_CONFIRMATIONS = 3;
     uint32 public constant CALLBACK_GAS_LIMIT = 200000;
 
     CasinoChip public immutable chip;
 
-    constructor(address _vrfCoordinator, address _chip) VRFConsumerBaseV2Plus(_vrfCoordinator) {
+    constructor(address _vrfCoordinator,  address _chip, uint256 _subId) VRFConsumerBaseV2Plus(_vrfCoordinator) {
         vrfCoordinator = _vrfCoordinator;
         chip = CasinoChip(_chip);
+        SUBSCRIPTION_ID = _subId;
 
     }
 
@@ -76,7 +77,7 @@ contract Blackjack is VRFConsumerBaseV2Plus, ReentrancyGuard {
     }
 
     // === VRF FUNCTIONS ===
-    function requestCards(address player, uint8 numCards) internal {
+    function requestCards(address player, uint8 numCards) internal returns(uint256) {
         require(numCards > 0, "Zero cards");
 
         uint256 requestId = s_vrfCoordinator.requestRandomWords(
@@ -94,6 +95,7 @@ contract Blackjack is VRFConsumerBaseV2Plus, ReentrancyGuard {
 
         requestIdToPlayer[requestId] = player;
         games[player].requestId = requestId;
+        return requestId;
     }
 
     function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
@@ -260,6 +262,31 @@ contract Blackjack is VRFConsumerBaseV2Plus, ReentrancyGuard {
 
     function getBet(address player) external view returns (uint88) {
         return games[player].bet;
+    }
+
+    function getStatusFlags(address player) external view returns (uint8) {
+        return games[player].statusFlags;
+    }
+
+    function getPlayerCards(address player) external view returns (uint8[] memory) {
+        return games[player].playerCards;
+    }
+
+    function getDealerCards(address player) external view returns (uint8[] memory) {
+        return games[player].dealerCards;
+    }
+
+    function isInGame(address player) external view returns (bool) {
+        return isFlagSet(games[player].statusFlags, FLAG_ACTIVE);
+    }
+
+    function getGameData(address _player) external view returns (
+        uint88 bet,
+        uint8 statusFlags,
+        uint8 remainingCards
+    ) {
+        Game storage g = games[_player];
+        return (g.bet, g.statusFlags, g.remainingCards);
     }
 
 }
