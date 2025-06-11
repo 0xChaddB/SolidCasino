@@ -10,7 +10,8 @@ contract CasinoChip is ERC20, AccessControl {
 
     address public immutable casinoBank;
 
-    constructor() ERC20("Casino Chip", "CHIP") {
+    constructor(address _casinoBank) ERC20("Casino Chip", "CHIP") {
+        casinoBank = _casinoBank;
         _grantRole(CASINO_ROLE, casinoBank);
         _grantRole(CASINO_ROLE, msg.sender); // governance 
     }
